@@ -21,14 +21,42 @@ class Validable a where
   valid :: a -> Bool
   valid = undefined
 
--- TODO: complete instances for each type to check validity by `valid` function
-instance Validable Circle
-instance Validable Triangle
-instance Validable Quadrilateral
+class (Validable a) => Shape2D a where
+    area :: a -> Double
+    area = undefined
+    circumference :: a -> Double
+    circumference = undefined
 
--- TODO: create appropriate typeclass for 2D shapes (subclass of Validable)
--- TODO: write instances for the types to compute circumference and area
+instance Validable Circle where
+    valid (Circle x) = x > 0.0
+instance Validable Triangle where
+    valid (EquilateralTriangle x) = x > 0.0
+    valid (IsoscelesTriangle a c) = 2 * c > a && c > 0.0 && a > 0.0
+    valid (ScaleneTriangle a b c) = ((a + b) > c) && ((a + c) > b) && ((b + c) > a) && a > 0.0 && b > 0.0 && c > 0.0
+instance Validable Quadrilateral where
+    valid (Square x)      = x > 0.0
+    valid (Rectangle a b) = a > 0.0 && b > 0.0
 
--- Note: this dummy functions should be placed in typeclass
-area = undefined
-circumference = undefined
+instance Shape2D Circle where
+    area x          | not $ valid x = 0.0
+    area (Circle r) = r * r * pi
+    circumference x          | not $ valid x = 0.0
+    circumference (Circle r) = 2 * pi * r
+
+instance Shape2D Triangle where
+    area x                                | not $ valid x = 0.0
+    area (EquilateralTriangle x)          = ((sqrt 3) / 4) * x * x
+    area x@(IsoscelesTriangle a c) = sqrt (p*(p-a)*(p-c)*(p-c)) where p = (circumference x) / 2
+    area x@(ScaleneTriangle a b c)          = sqrt (p*(p-a)*(p-b)*(p-c)) where p = (circumference x) / 2
+    circumference x                       | not $ valid x = 0.0
+    circumference (EquilateralTriangle x) = 3 * x
+    circumference (IsoscelesTriangle a c) = a + c * 2
+    circumference (ScaleneTriangle a b c) = a + b + c
+
+instance Shape2D Quadrilateral where
+    area x               | not $ valid x = 0.0
+    area (Square x)      = x * x
+    area (Rectangle a b) = a * b
+    circumference x               | not $ valid x = 0.0
+    circumference (Square x)      = 4 * x
+    circumference (Rectangle a b) = 2 * (a + b)

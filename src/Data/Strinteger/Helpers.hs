@@ -1,6 +1,9 @@
 module Data.Strinteger.Helpers where
 
-import Data.Map as M
+import           Data.List       (intercalate)
+import           Data.List.Split (splitOn)
+import           Data.Map        as M
+import           Prelude         as P
 
 zero = "zero" -- zero is very special value
 
@@ -77,6 +80,48 @@ word2numMap = unions [numunits, numtens, numscales]
 -- | Translate word to (scale, value) tuple if defined
 word2num :: String -> Maybe (Integer, Integer)
 word2num k = M.lookup k word2numMap
+
+int2numParts :: Integer -> Integer -> [String]
+int2numParts 0 0 = [zero]
+int2numParts 0 _ = []
+int2numParts num inside = getWordsTo1000 scale val ++ int2numParts (num - val * scale) (inside + 1)
+   where (fullscale, rest) = divMod (floor (logBase 10 (fromInteger num))) 3
+         scale = 10 ^ (fullscale * 3)
+         val = num `quot` scale
+
+getWordsTo1000 :: Integer -> Integer -> [String]
+getWordsTo1000 scale val | scale > 1 = getWordsTo1000 0 val ++ case num2word scale 0 of
+                                                                Just s -> [s]
+                                                                Nothing -> []
+                         | val >= 100 = hundList ++ getWordsTo1000 scale (val - n * 100)
+                         | val >= 20 = tenList
+                         | otherwise = unitList where
+                            n = val `quot` 100
+                            ntens = val `quot` 10
+                            tenList = case (num2word 10 ntens, num2word 1 (val - ntens * 10)) of
+                                (Just s1, Just "zero") -> [s1]
+                                (Just s1, Just s2) -> [s1 ++ [separatorTens] ++ s2]
+                                (_, _) -> []
+                            unitList = case (num2word 1 val) of
+                                (Just "zero") -> []
+                                (Just s1)     -> [s1]
+                                (_)           -> []
+                            hundList = case (num2word 1 n, num2word 100 0) of
+                                (Just s1, Just s2) -> [s1, s2]
+                                (_, _)             -> []
+
+
+numParts2Integer :: [String] -> Integer -> Integer -> Maybe Integer
+numParts2Integer [] acc _ = Just acc
+numParts2Integer (x:xs) acc inside | x == negativePrefix = numParts2Integer xs acc (inside + 1) >>= (\x -> Just (- x))
+                                | separatorTens `elem` x = numParts2Integer ((splitOn [separatorTens] x) ++ xs) acc (inside + 1)
+                                | otherwise = case (word2num x, acc) of
+                                                         (Just (1, 0), _) -> if (P.null xs && inside == 0) then (Just 0) else Nothing
+                                                         (Just (_, 0), 0) -> Nothing
+                                                         (Just (100, 0), _) -> numParts2Integer xs (100 * acc) (inside + 1)
+                                                         (Just (scale, 0), _) -> numParts2Integer xs 0 (inside + 1) >>= (\x -> Just (acc * scale + x))
+                                                         (Just (scale, val), _) -> numParts2Integer xs ((scale * val) + acc) (inside + 1)
+                                                         (Nothing, _) -> Nothing
 
 -- | Map where key is (scale, value) tuple and numword is the value (inverse of word2numMap)
 num2wordMap :: M.Map (Integer, Integer) String

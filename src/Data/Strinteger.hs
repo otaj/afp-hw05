@@ -1,10 +1,7 @@
 module Data.Strinteger where
 
-import Data.Maybe
--- You might need to use intercalate and splitOn (similar to words/unwords)
-import Data.List (intercalate)
-import Data.List.Split (splitOn)
-
+import           Data.List.Split         (splitOn)
+import           Data.Maybe
 -- Use Data.Strinteger.Helpers submodule
 -- In case of need, feel free to change or enhance Helpers or create own
 -- submodule
@@ -36,35 +33,36 @@ unpack (Strinteger numeral) = fromMaybe err (engNumeral2Integer numeral)
 -- | Translate Integer to String (if possible)
 -- TODO: implement Integer->String translation
 integer2EngNumeral :: Integer -> Maybe String
-integer2EngNumeral = undefined
+integer2EngNumeral num | abs num > SH.highestPossible = Nothing
+                       | num < 0 = (Just (unwords (SH.negativePrefix : SH.int2numParts (negate num) 0)))
+                       | otherwise = (Just (unwords (SH.int2numParts num 0)))
+
 
 -- | Translate String to Integer (if possible)
--- TODO: implement String->Integer translation
 engNumeral2Integer :: String -> Maybe Integer
-engNumeral2Integer = undefined
+engNumeral2Integer numeral = SH.numParts2Integer (splitOn [SH.separator] numeral) 0 0
 
--- TODO: implement Strinteger instances of Num, Ord, Eq, Enum, Real, and Integral
 instance Eq Strinteger where
-    (==) = undefined
+    (==) a b = (unpack a) == (unpack b)
 
 instance Ord Strinteger where
-    compare = undefined
+    compare a b = compare (unpack a) (unpack b)
 
 instance Num Strinteger where
-    (+) = undefined
-    (*) = undefined
-    negate = undefined
-    abs = undefined
-    signum = undefined
-    fromInteger = undefined
+    (+) a b = pack $ (unpack a) + (unpack b)
+    (*) a b = pack $ (unpack a) * (unpack b)
+    negate = pack . negate . unpack
+    abs = pack . abs . unpack
+    signum = pack . signum . unpack
+    fromInteger = pack
 
 instance Enum Strinteger where
-    toEnum = undefined
-    fromEnum = undefined
+    toEnum = pack . fromIntegral
+    fromEnum = fromIntegral . unpack
 
 instance Real Strinteger where
     toRational = undefined
 
 instance Integral Strinteger where
-    quotRem = undefined
-    toInteger = undefined
+    quotRem a b = (pack uA, pack uB) where (uA, uB) = quotRem (unpack a) (unpack b)
+    toInteger = unpack
